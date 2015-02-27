@@ -1,0 +1,48 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>Image </title>
+		<style type="text/css">
+			#cuttingImage{
+				width: 640px;
+				height: 400px;
+				background-color: lightgray;
+				position: relative;
+			}
+			#cuttingImage > .showLogo{
+				border: 1px solid lightgray;
+				border-radius: 100%;
+				background-color: lightgray;
+				position: absolute;
+				
+			}
+			#cuttingImage > .one{
+				width: 100px;
+				height: 100px;
+				left: 800px;
+			}
+			#cuttingImage > .two{
+				width: 200px;
+				height: 200px;
+				left: 750px;
+				top: 120px;
+			}
+		</style>
+		<script type="text/javascript" src="jquery-1.11.0.min.js"></script>
+	</head>
+	<body>
+		<h1>Cutting Image</h1>
+		<h2>Dragging a photo in your file system to change image</h2>
+		<div id="cuttingImage">
+			<div class="showLogo one"></div>
+			<div class="showLogo two"></div>
+
+		</div>
+		<script type="text/javascript" src="ImageCutting.js"></script>
+		<script type="text/javascript">
+			console.log(parseInt($("#cuttingImage").css('width').trim()));
+			$('#cuttingImage').ImageClipping("background-3.jpg",{})
+		</script>
+		
+	</body>
+</html>
