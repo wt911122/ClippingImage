@@ -1,12 +1,17 @@
 (function($){
 	var $that,
 		$canvas,
+		$option              = [],
 		context,
 		CanvasWidth,
 		CanvasHeight,
 		image                = new Image(),
 		$showFocus           = [],
 		imageData,
+		offscreenCanvas      = document.createElement('canvas'),
+		offscreenContext     = offscreenCanvas.getContext('2d'),
+		offscreenCanvasBackup =  document.createElement('canvas'),
+		offscreenContextBackup = offscreenCanvas.getContext('2d'),
 		rubberRect           = {}, 
 		rubberCircle         = {},
 		mousedown            = {},
@@ -17,12 +22,7 @@
 		ARC_LINEWIDTH        = 3.0,
 		DEFAULT_RADIUS       = 100,
 		CONTROL_POINT_RADIUS = 5,
-		//CONTROL_LOCATION_POINT_STYLE = "yellow",
 		CONTROL_SHAPE_POINT_STYLE = "yellow";
-
-	function CanvasCuttingEdge(){
-
-	}
 
 	function isIntheRubber(){
 		context.beginPath();
@@ -37,8 +37,8 @@
 	}
 	
 
-	function createRubberPath(opt){
-		context.arc(rubberCircle.x, rubberCircle.y, rubberCircle.radius + (opt?opt:0), 0, Math.PI*2, false);
+	function createRubberPath(opt, dir){
+		context.arc(rubberCircle.x, rubberCircle.y, rubberCircle.radius + (opt?opt:0), 0, Math.PI*2, dir||false);
 	}
 
 	function createControlPointPath(opt){
@@ -46,6 +46,19 @@
 					rubberRect.y + ARC_LINEWIDTH + CONTROL_POINT_RADIUS, 
 					CONTROL_POINT_RADIUS + (opt?opt:0), 
 					0, Math.PI*2, false);
+	}
+
+	function BlackAndWhite(){
+		var imageData = context.getImageData(0,0,context.canvas.width, context.canvas.height),
+			data = imageData.data;
+
+		for(var i=0; i < data.length - 4; i+=4){
+			average = (data[i] + data[i+1] + data[i+2]) / 3;
+			data[i] = average;
+			data[i+1] = average;
+			data[i+2] = average;
+		}
+		context.putImageData(imageData, 0, 0)
 	}
 
 	function deployDefaultArc(){
@@ -102,14 +115,15 @@
 	}
 
 	function drawBackGround(){
+		context.clearRect(0, 0, CanvasWidth, CanvasHeight)
 		context.drawImage(image, 0, 0, CanvasWidth, CanvasHeight);
 	}
 
 	function drawFocus(){
 		$showFocus.forEach(function(focus){
-
 			var context = focus.context;
-			context.clearRect(0, 0, focus.radius*2, focus.radius*2)
+			context.clearRect(0, 0, focus.radius*2, focus.radius*2);
+			context.save();
 			context.beginPath();
 			context.arc(focus.radius, focus.radius, focus.radius, 0, Math.PI*2, false);
 			context.clip();
@@ -118,6 +132,7 @@
 							0, 0,
 							rubberRect.width * focus.ratio,
 							rubberRect.width * focus.ratio);
+			context.restore();
 		})
 	}
 
@@ -139,6 +154,21 @@
 		}
 	}
 
+	function drawCover(){
+		drawBackGround();
+		offscreenContext.save();
+		offscreenContext.clearRect(0, 0, CanvasWidth, CanvasHeight);
+		offscreenContext.beginPath();
+		offscreenContext.arc(rubberCircle.x, rubberCircle.y, rubberCircle.radius - ARC_LINEWIDTH, 0, Math.PI*2, false);
+		offscreenContext.clip();
+		offscreenContext.drawImage(image, 0, 0, CanvasWidth, CanvasHeight);
+
+		BlackAndWhite();
+		context.drawImage(offscreenCanvas, 0, 0, CanvasWidth, CanvasHeight);
+		offscreenContext.restore();		
+		drawArc();
+	}
+
 	function addCanvasListener(){
 		$canvas.onmousedown = function(e){
 			e.preventDefault();
@@ -156,17 +186,27 @@
 		$canvas.onmousemove = function(e){
 			e.preventDefault();
 			if (dragging) {
-				erase();
+				if (!$option.cover){
+					erase();
+				}
 				update(windowToCanvas(e.clientX, e.clientY));
-				drawClipingArc();
+				if ($option.cover) drawCover();
+				else drawClipingArc();
+
 				drawArcControlPoint();
 				drawFocus();
+				
 			}
 
 			if (editing) {
-				erase();
+				if (!$option.cover){
+					erase();
+				}
 				editUpdate(windowToCanvas(e.clientX, e.clientY));
-				drawClipingArc();
+
+				if ($option.cover) drawCover();
+				else drawClipingArc();
+
 				drawArcControlPoint();
 				drawFocus();
 			}
@@ -249,15 +289,17 @@
 	}
 
 
+
 	$.fn.ImageClipping = function(initialSrc, option){
 		$that = $(this);
+		$option = option;
 		if ($that.length > 1) {
 			throw new Error("Can't handle more than one element");
 		}
-		console.log($that.css('width'))
 		CanvasWidth = parseInt($that.css('width').trim());
 		CanvasHeight = parseInt($that.css('height').trim());
-		
+		offscreenCanvas.width = CanvasWidth;
+		offscreenCanvas.height = CanvasHeight;
 		appendCanvas();
 		image.src = initialSrc;
 		image.onload = function(){
@@ -266,14 +308,14 @@
 				deployDefaultArc();
 				deployRubberRect();
 			};
-			
-			drawBackGround();
+			if ($option.cover) drawCover();
+			else drawBackGround();
+
 			drawClipingArc();
 			drawArcControlPoint();
 			addCanvasListener();
 			
 			$that.find('.showLogo').each(function(){
-				//var context = $('<canvas width="'+ $(this).css('width').trim() +'" height="'+  $(this).css('width').trim() +'">').appendTo($(this))[0].getContext('2d'),
 				var canvas = hasCanvas(this) || createCanvasElement(this),
 					context =  canvas.getContext('2d'),
 					width = parseFloat($(this).css('width').trim()),
@@ -284,12 +326,17 @@
 				$showFocus.push({
 					context:context,
 					radius:width/2,
-					ratio:ratio,
+					ratio:ratio
 				})
 				
 			})
 			drawFocus();
 		}
 		return $that
+	}
+
+	$.fn.setImageClippingOpt = function(option){
+		$option = option;
+		image.onload.call(this)
 	}
 })(jQuery)

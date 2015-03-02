@@ -32,16 +32,32 @@
 	</head>
 	<body>
 		<h1>Cutting Image</h1>
-		<h2>Dragging a photo in your file system to change image</h2>
+		<h2>Drag a photo in your file system to change image 
+		</h2>
+		<label>
+			Show Cover
+			<input id='showCover' type='checkbox' value='cover'>
+		</label>
 		<div id="cuttingImage">
 			<div class="showLogo one"></div>
 			<div class="showLogo two"></div>
 
 		</div>
+		<div id="test"></div>
 		<script type="text/javascript" src="ImageCutting.js"></script>
 		<script type="text/javascript">
-			console.log(parseInt($("#cuttingImage").css('width').trim()));
-			$('#cuttingImage').ImageClipping("background-3.jpg",{})
+			var $showCover = document.getElementById('showCover');
+
+			$showCover.onchange = function(){
+				if (this.checked) {
+					$('#cuttingImage').setImageClippingOpt({cover:true})
+				}else{
+					$('#cuttingImage').setImageClippingOpt({cover:false})
+				}
+			}
+			$('#cuttingImage').ImageClipping("background-3.jpg",{cover:false})
+			//console.log(parseInt($("#cuttingImage").css('width').trim()));
+			
 		</script>
 		
 	</body>
